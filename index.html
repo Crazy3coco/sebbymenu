@@ -40,6 +40,11 @@
   .seat .sec{position:absolute;top:4px;right:8px;font-size:11px;color:var(--muted);font-weight:700}
   .seat.angry{background:#4a1d22;border-color:var(--red);animation:shake .35s}
   .seat.happy{background:#173a2c;border-color:var(--green)}
+  .seat.expelled{background:#3a2f12;border-color:var(--gold)}
+  .seat.expelled .orders{font-size:12px;font-weight:800;color:#2a2036;text-align:center;padding:5px 8px}
+  .toast{position:fixed;left:50%;top:18%;transform:translate(-50%,-10px);background:var(--gold);color:#2a2036;font-weight:800;
+    font-size:15px;padding:10px 16px;border-radius:14px;z-index:20;opacity:0;pointer-events:none;transition:all .25s;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
   .seat.druid{border-color:var(--purple);background:#271d45}
   .seat.druid .orders{background:#3a2a66;color:#fff;font-size:12px;font-weight:700;padding:5px 8px}
   .seat.hex::after{content:"✨";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:46px;background:rgba(155,107,255,.35);animation:fade .6s forwards}
@@ -86,6 +91,8 @@
   <div id="menu"></div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <div class="overlay" id="startOv">
   <div class="card">
     <h1>🎩 집사 세바스찬의 만찬</h1>
@@ -93,7 +100,7 @@
     <ul>
       <li><b>음식 선택 → 손님 탭</b>으로 서빙합니다.</li>
       <li>손님은 <b>10초</b> 안에 음식이 안 나오면 화내며 떠나고 ❤️가 줄어요.</li>
-      <li>👦 <b>시엘</b>님은 한 번에 여러 음식을 주문합니다. 하나를 낼 때마다 인내심이 회복돼요.</li>
+      <li>👦 <b>시엘</b>님은 한 번에 여러 음식을 주문합니다. 하나를 낼 때마다 인내심이 회복돼요. 단, <b>3개째</b>를 드시면 "그 이상은 안됩니다" 하고 집사가 내보냅니다.</li>
       <li>🧙 <b>드루이드</b>는 방해꾼! 빠르게 <b>연타</b>해서 쫓아내세요.</li>
       <li>싫어하는 음식을 내면 인내심이 깎여요.</li>
     </ul>
@@ -130,6 +137,8 @@
   const DRUID_TAPS = 5;         // 드루이드 퇴치에 필요한 연타 수
   const DRUID_STAY = 12;        // 이 시간 넘기면 하트 -1
   const WRONG_PENALTY = 2;      // 잘못된 음식 시 인내심 감소(초)
+  const EXPEL_AT = 3;           // 시엘이 이만큼 먹으면 집사가 내쫓는다
+  const EXPEL_BONUS = 100;      // 퇴장 시 보너스 점수
 
   /* ===== 데이터 ===== */
   const FOODS = {
@@ -277,7 +286,8 @@
     const c = {type, patience:PATIENCE, orders:[]};
     if(n.pest){ c.hp = DRUID_TAPS; c.stay = 0; c.magic = 2.5; }
     else if(n.multi){
-      const cnt = Math.min(2 + Math.floor((st.level-1)/2) + (Math.random()<.5?1:0), 5);
+      // 시엘은 항상 EXPEL_AT개 이상 주문 (더 먹으려 하지만 집사가 막는다)
+      const cnt = Math.min(EXPEL_AT + Math.floor(Math.random()*2), n.likes.length);
       const pool = [...n.likes].sort(()=>Math.random()-.5).slice(0,cnt);
       c.orders = pool.map(f => ({food:f, done:false}));
     } else {
@@ -289,10 +299,23 @@
   function leave(s, kind){          // kind: 'angry' | 'happy' | 'exorcised' | 'hex'
     s.busy = true;
     const el = s.el;
+    let delay = 650;
     if(kind === 'angry'){ el.classList.add('angry'); pop(s,'😡 화나서 떠납니다!',true); }
     else if(kind === 'happy'){ el.classList.add('happy'); }
+    else if(kind === 'expelled'){
+      el.className = 'seat occupied expelled';
+      el.innerHTML = '<div class="face">👦💨</div><div class="name">시엘</div><div class="orders">도련님, 그 이상은 안됩니다</div>';
+      delay = 1400;
+    }
     s.c = null;
-    setTimeout(()=>{ s.busy = false; renderSeat(s); }, 650);
+    setTimeout(()=>{ s.busy = false; renderSeat(s); }, delay);
+  }
+  let toastTimer = null;
+  function toast(text){
+    const t = $('toast');
+    t.textContent = text; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
   }
   function loseLife(){
     st.lives--; st.combo = 0; hud();
@@ -329,7 +352,13 @@
     st.score += gain;
     pop(s, `+${gain}`);
     if(n.multi) c.patience = PATIENCE;    // 시엘: 하나 낼 때마다 인내심 회복
-    if(c.orders.every(o => o.done)){
+    if(n.multi && c.orders.filter(o => o.done).length >= EXPEL_AT){
+      // 시엘이 EXPEL_AT개 이상 먹으면 집사가 퇴장시킨다 (하트 감소 없음)
+      st.served++; st.score += EXPEL_BONUS;
+      toast('🤵 "도련님, 그 이상은 안됩니다."');
+      pop(s, `집사의 단호함 +${EXPEL_BONUS}`);
+      sfx.win(); leave(s,'expelled');
+    } else if(c.orders.every(o => o.done)){
       st.served++;
       if(n.multi){ st.score += 50 * c.orders.length; pop(s,`풀코스 +${50*c.orders.length}`); }
       leave(s,'happy');
