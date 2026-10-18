@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1a1626">
+<title>집사 세바스찬의 만찬</title>
+<style>
+  :root{
+    --bg:#1a1626; --panel:#272038; --panel2:#322946; --gold:#e8c26a;
+    --text:#f4efe6; --muted:#a79cbc; --red:#e5484d; --green:#4cc38a; --purple:#9b6bff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;overflow:hidden}
+  #app{height:100dvh;max-width:520px;margin:0 auto;display:flex;flex-direction:column;
+    padding:env(safe-area-inset-top) 8px env(safe-area-inset-bottom);gap:6px}
+
+  /* HUD */
+  #hud{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--panel);border-radius:12px;font-weight:700;font-size:14px}
+  #hud .hearts{letter-spacing:2px;font-size:16px;min-width:64px}
+  #hud .score{color:var(--gold);font-size:17px}
+  #hud button{background:var(--panel2);color:var(--text);border:0;border-radius:8px;padding:6px 10px;font-size:14px}
+  #combo{height:16px;text-align:center;font-size:12px;color:var(--gold);font-weight:700}
+
+  /* 홀 */
+  #hall{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:8px}
+  .seat{position:relative;background:var(--panel);border:2px dashed #3d3354;border-radius:14px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:4px;overflow:hidden;transition:border-color .15s, background .15s}
+  .seat.occupied{border-style:solid;border-color:#4a3f66}
+  .seat.target{border-color:var(--gold);box-shadow:0 0 0 2px rgba(232,194,106,.35)}
+  .seat .empty{color:#4a3f66;font-size:12px}
+  .seat .face{font-size:34px;line-height:1}
+  .seat .name{font-size:12px;font-weight:700;color:var(--gold);margin-top:2px}
+  .seat .orders{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:3px;background:#fff;border-radius:10px;padding:3px 6px;min-height:26px;max-width:100%}
+  .seat .orders span{font-size:20px;line-height:1.1}
+  .seat .orders span.done{opacity:.25;filter:grayscale(1)}
+  .seat .bar{position:absolute;left:6px;right:6px;bottom:5px;height:7px;background:#14101f;border-radius:5px;overflow:hidden}
+  .seat .bar i{display:block;height:100%;width:100%;background:var(--green);transition:background .2s}
+  .seat .sec{position:absolute;top:4px;right:8px;font-size:11px;color:var(--muted);font-weight:700}
+  .seat.angry{background:#4a1d22;border-color:var(--red);animation:shake .35s}
+  .seat.happy{background:#173a2c;border-color:var(--green)}
+  .seat.druid{border-color:var(--purple);background:#271d45}
+  .seat.druid .orders{background:#3a2a66;color:#fff;font-size:12px;font-weight:700;padding:5px 8px}
+  .seat.hex::after{content:"✨";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:46px;background:rgba(155,107,255,.35);animation:fade .6s forwards}
+  .pop{position:absolute;left:50%;top:30%;transform:translateX(-50%);font-weight:800;font-size:15px;color:var(--gold);pointer-events:none;animation:floatUp .9s forwards;text-shadow:0 1px 3px #000;white-space:nowrap}
+  .pop.bad{color:var(--red)}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  @keyframes floatUp{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-40px)}}
+  @keyframes fade{to{opacity:0}}
+
+  /* 집사 / 메뉴 */
+  #butler{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:12px;padding:6px 10px;font-size:13px;min-height:44px}
+  #butler .b{font-size:26px}
+  #holding{flex:1;color:var(--muted)}
+  #holding b{color:var(--gold)}
+  #menu{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--panel);border-radius:12px;padding:6px}
+  .food{background:var(--panel2);border:2px solid transparent;border-radius:10px;padding:4px 0 3px;display:flex;flex-direction:column;align-items:center;color:var(--text)}
+  .food .e{font-size:22px;line-height:1.1}
+  .food .n{font-size:9px;color:var(--muted);margin-top:1px;white-space:nowrap}
+  .food.sel{border-color:var(--gold);background:#4a3d6b;transform:translateY(-2px)}
+
+  /* 오버레이 */
+  .overlay{position:fixed;inset:0;background:rgba(10,7,20,.88);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
+  .overlay.hidden{display:none}
+  .card{max-width:420px;width:100%;background:var(--panel);border:2px solid var(--gold);border-radius:18px;padding:20px;text-align:center;max-height:92dvh;overflow:auto}
+  .card h1{margin:0 0 4px;font-size:22px;color:var(--gold)}
+  .card p{margin:6px 0;font-size:14px;line-height:1.5;color:var(--text)}
+  .card .sub{color:var(--muted);font-size:12px}
+  .card ul{text-align:left;font-size:12.5px;line-height:1.55;padding-left:18px;color:var(--text)}
+  .btn{margin-top:10px;background:var(--gold);color:#2a2036;border:0;border-radius:12px;padding:13px 28px;font-size:17px;font-weight:800;width:100%}
+  .btn.ghost{background:var(--panel2);color:var(--text);margin-top:8px;font-size:14px;padding:10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <span class="hearts" id="hearts">❤️❤️❤️</span>
+    <span>Lv.<span id="level">1</span></span>
+    <span class="score">⭐ <span id="score">0</span></span>
+    <button id="pauseBtn" aria-label="일시정지">⏸</button>
+  </div>
+  <div id="combo"></div>
+  <div id="hall"></div>
+  <div id="butler"><span class="b">🤵</span><div id="holding">음식을 고른 뒤 손님을 탭하세요</div></div>
+  <div id="menu"></div>
+</div>
+
+<div class="overlay" id="startOv">
+  <div class="card">
+    <h1>🎩 집사 세바스찬의 만찬</h1>
+    <p class="sub">"저는 악마 같은 집사이니까요."</p>
+    <ul>
+      <li><b>음식 선택 → 손님 탭</b>으로 서빙합니다.</li>
+      <li>손님은 <b>10초</b> 안에 음식이 안 나오면 화내며 떠나고 ❤️가 줄어요.</li>
+      <li>👦 <b>시엘</b>님은 한 번에 여러 음식을 주문합니다. 하나를 낼 때마다 인내심이 회복돼요.</li>
+      <li>🧙 <b>드루이드</b>는 방해꾼! 빠르게 <b>연타</b>해서 쫓아내세요.</li>
+      <li>싫어하는 음식을 내면 인내심이 깎여요.</li>
+    </ul>
+    <p class="sub">최고 점수: <span id="bestStart">0</span></p>
+    <button class="btn" id="startBtn">영업 시작</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pauseOv">
+  <div class="card">
+    <h1>⏸ 잠시 휴식</h1>
+    <button class="btn" id="resumeBtn">계속하기</button>
+    <button class="btn ghost" id="quitBtn">처음으로</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="overOv">
+  <div class="card">
+    <h1>영업 종료</h1>
+    <p id="overMsg"></p>
+    <p>점수 <b id="finalScore">0</b> · 서빙 <b id="finalServed">0</b>건 · 최고 <b id="finalBest">0</b></p>
+    <button class="btn" id="retryBtn">다시 도전</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ===== 설정 (여기 숫자만 바꿔도 난이도 조절 가능) ===== */
+  const PATIENCE = 10;          // 손님 인내심(초) - 요구사항: 10초
+  const MAX_LIVES = 3;
+  const SEATS = 6;
+  const DRUID_TAPS = 5;         // 드루이드 퇴치에 필요한 연타 수
+  const DRUID_STAY = 12;        // 이 시간 넘기면 하트 -1
+  const WRONG_PENALTY = 2;      // 잘못된 음식 시 인내심 감소(초)
+
+  /* ===== 데이터 ===== */
+  const FOODS = {
+    parfait:['🍨','파르페'], cookie:['🍪','쿠키'], choco:['🍫','초콜렛'], cake:['🍰','케이크'],
+    waffle:['🧇','와플'], baum:['🎂','바움쿠엔'], macaron:['🧁','마카롱'], chewy:['🍘','쫀득쿠키'],
+    yakgwa:['🍯','약과'], dubai:['🌰','두쫀쿠'],
+    soup:['🍲','스프'], mooncake:['🥮','월병'],
+    steak:['🥩','스테이크'], beer:['🍺','맥주'],
+    earlchoco:['☕','백작초코'], snake:['🐍','스네이크'],
+    mouse:['🐭','생쥐'],
+    greentea:['🍵','녹차'], wagashi:['🍡','화과자'],
+    duck:['🦆','오리고기'], dumpling:['🥟','만두']
+  };
+  const NPCS = {
+    ciel:   {name:'시엘',   face:'👦', likes:['parfait','cookie','choco','cake','waffle','baum','macaron','chewy','yakgwa','dubai'], multi:true},
+    meirin: {name:'메이린', face:'👓', likes:['soup','mooncake']},
+    bardo:  {name:'바르도', face:'👨‍🍳', likes:['steak','beer']},
+    finian: {name:'피니안', face:'🧑‍🌾', likes:['earlchoco','snake']},
+    snake:  {name:'스네이크',face:'🧔', likes:['mouse','steak']},
+    tanaka: {name:'다나카', face:'👴', likes:['greentea','wagashi']},
+    lau:    {name:'라우',   face:'🕶️', likes:['duck','dumpling']},
+    ranmao: {name:'랑마오', face:'👧', likes:['duck','dumpling']},
+    druid:  {name:'드루이드',face:'🧙', likes:[], pest:true}
+  };
+  const REGULARS = ['meirin','bardo','finian','snake','tanaka','lau','ranmao'];
+
+  /* ===== 상태 ===== */
+  const $ = id => document.getElementById(id);
+  const hall = $('hall'), menu = $('menu');
+  let seats = [];
+  let st;            // 게임 상태
+  let selected = null;
+  let running = false, paused = false, lastT = 0;
+  let best = 0;
+  try { best = +localStorage.getItem('sebastian_best') || 0; } catch(e){}
+
+  /* ===== 사운드 (WebAudio, 첫 터치 후 활성) ===== */
+  let actx = null;
+  function beep(freq, dur=0.1, type='sine', vol=0.08){
+    try{
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(actx.destination);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+      o.start(); o.stop(actx.currentTime + dur);
+    }catch(e){}
+  }
+  const sfx = {
+    ok(){ beep(660,.08); setTimeout(()=>beep(880,.1),70); },
+    bad(){ beep(180,.18,'square',.06); },
+    angry(){ beep(140,.3,'sawtooth',.07); if(navigator.vibrate) navigator.vibrate(120); },
+    shoo(){ beep(520,.05,'triangle'); },
+    win(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.12),i*80)); }
+  };
+
+  /* ===== UI 빌드 ===== */
+  function buildSeats(){
+    hall.innerHTML = ''; seats = [];
+    for(let i=0;i<SEATS;i++){
+      const el = document.createElement('div');
+      el.className = 'seat';
+      el.innerHTML = '<span class="empty">빈 자리</span>';
+      el.addEventListener('pointerdown', e => { e.preventDefault(); onSeat(i); });
+      hall.appendChild(el);
+      seats.push({el, c:null, busy:false});
+    }
+  }
+  function buildMenu(){
+    menu.innerHTML = '';
+    Object.entries(FOODS).forEach(([id,[emoji,name]]) => {
+      const b = document.createElement('button');
+      b.className = 'food'; b.dataset.id = id;
+      b.innerHTML = `<span class="e">${emoji}</span><span class="n">${name}</span>`;
+      b.addEventListener('pointerdown', e => { e.preventDefault(); selectFood(id); });
+      menu.appendChild(b);
+    });
+  }
+  function selectFood(id){
+    selected = (selected === id) ? null : id;
+    [...menu.children].forEach(b => b.classList.toggle('sel', b.dataset.id === selected));
+    const h = $('holding');
+    if(selected){ h.innerHTML = `<b>${FOODS[selected][0]} ${FOODS[selected][1]}</b> 준비 완료 — 손님을 탭!`; beep(440,.04); }
+    else h.textContent = '음식을 고른 뒤 손님을 탭하세요';
+    seats.forEach(s => s.el.classList.toggle('target', !!selected && !!s.c && !s.busy && !NPCS[s.c.type].pest));
+  }
+
+  function renderSeat(s){
+    const el = s.el, c = s.c;
+    el.className = 'seat';
+    if(!c){ el.innerHTML = '<span class="empty">빈 자리</span>'; return; }
+    const n = NPCS[c.type];
+    el.classList.add('occupied');
+    if(n.pest){
+      el.classList.add('druid');
+      el.innerHTML = `<div class="face">${n.face}</div><div class="name">${n.name}</div>
+        <div class="orders">👊 연타! <span id="dh${s.idx}">${c.hp}</span></div>
+        <div class="bar"><i style="background:var(--purple)"></i></div>`;
+    } else {
+      el.innerHTML = `<span class="sec"></span><div class="face">${n.face}</div><div class="name">${n.name}</div>
+        <div class="orders">${c.orders.map(o=>`<span class="${o.done?'done':''}">${FOODS[o.food][0]}</span>`).join('')}</div>
+        <div class="bar"><i></i></div>`;
+    }
+    if(selected && !n.pest) el.classList.add('target');
+  }
+  function pop(s, text, bad){
+    const p = document.createElement('div');
+    p.className = 'pop' + (bad ? ' bad' : ''); p.textContent = text;
+    s.el.appendChild(p); setTimeout(()=>p.remove(), 900);
+  }
+  function hud(){
+    $('hearts').textContent = '❤️'.repeat(Math.max(0,st.lives)) + '🖤'.repeat(MAX_LIVES - Math.max(0,st.lives));
+    $('score').textContent = st.score;
+    $('level').textContent = st.level;
+    $('combo').textContent = st.combo >= 2 ? `🔥 ${st.combo} 콤보!` : '';
+  }
+
+  /* ===== 게임 로직 ===== */
+  function newState(){
+    return {score:0, lives:MAX_LIVES, level:1, elapsed:0, spawnT:0.8, combo:0, served:0};
+  }
+  function start(){
+    st = newState(); selected = null;
+    buildSeats(); seats.forEach((s,i)=>s.idx=i); selectFood(null); hud();
+    ['startOv','pauseOv','overOv'].forEach(id => $(id).classList.add('hidden'));
+    running = true; paused = false; lastT = performance.now();
+    requestAnimationFrame(loop);
+  }
+  function freeSeat(){
+    const free = seats.filter(s => !s.c && !s.busy);
+    return free.length ? free[Math.floor(Math.random()*free.length)] : null;
+  }
+  function spawn(){
+    const s = freeSeat(); if(!s) return;
+    const active = seats.filter(x=>x.c).map(x=>x.c.type);
+    let type;
+    const r = Math.random();
+    if(st.level >= 2 && r < 0.12 && !active.includes('druid')) type = 'druid';
+    else if(r < 0.35 && !active.includes('ciel')) type = 'ciel';
+    else {
+      const pool = REGULARS.filter(t => !active.includes(t));
+      type = (pool.length ? pool : REGULARS)[Math.floor(Math.random()*(pool.length||REGULARS.length))];
+    }
+    const n = NPCS[type];
+    const c = {type, patience:PATIENCE, orders:[]};
+    if(n.pest){ c.hp = DRUID_TAPS; c.stay = 0; c.magic = 2.5; }
+    else if(n.multi){
+      const cnt = Math.min(2 + Math.floor((st.level-1)/2) + (Math.random()<.5?1:0), 5);
+      const pool = [...n.likes].sort(()=>Math.random()-.5).slice(0,cnt);
+      c.orders = pool.map(f => ({food:f, done:false}));
+    } else {
+      c.orders = [{food:n.likes[Math.floor(Math.random()*n.likes.length)], done:false}];
+    }
+    s.c = c; renderSeat(s);
+  }
+
+  function leave(s, kind){          // kind: 'angry' | 'happy' | 'exorcised' | 'hex'
+    s.busy = true;
+    const el = s.el;
+    if(kind === 'angry'){ el.classList.add('angry'); pop(s,'😡 화나서 떠납니다!',true); }
+    else if(kind === 'happy'){ el.classList.add('happy'); }
+    s.c = null;
+    setTimeout(()=>{ s.busy = false; renderSeat(s); }, 650);
+  }
+  function loseLife(){
+    st.lives--; st.combo = 0; hud();
+    if(st.lives <= 0) gameOver();
+  }
+
+  function onSeat(i){
+    if(!running || paused) return;
+    const s = seats[i], c = s.c;
+    if(!c) return;
+    const n = NPCS[c.type];
+
+    if(n.pest){                       // 드루이드 퇴치
+      c.hp--; sfx.shoo();
+      const hp = $('dh'+i); if(hp) hp.textContent = Math.max(c.hp,0);
+      s.el.style.transform = 'scale(.94)'; setTimeout(()=>s.el.style.transform='',70);
+      if(c.hp <= 0){
+        st.score += 150; st.combo++; hud();
+        pop(s,'🧹 퇴치! +150'); sfx.win(); leave(s,'exorcised');
+      }
+      return;
+    }
+    if(!selected){ pop(s,'먼저 음식을 고르세요',true); return; }
+
+    const order = c.orders.find(o => !o.done && o.food === selected);
+    if(!order){                       // 취향 아님
+      c.patience -= WRONG_PENALTY; st.combo = 0; hud();
+      pop(s,`${FOODS[selected][0]} 싫어요! -${WRONG_PENALTY}s`,true); sfx.bad();
+      return;
+    }
+    order.done = true; st.combo++; sfx.ok();
+    const bonus = Math.round(c.patience * 5) + Math.min(st.combo,10) * 10;
+    const gain = 100 + bonus;
+    st.score += gain;
+    pop(s, `+${gain}`);
+    if(n.multi) c.patience = PATIENCE;    // 시엘: 하나 낼 때마다 인내심 회복
+    if(c.orders.every(o => o.done)){
+      st.served++;
+      if(n.multi){ st.score += 50 * c.orders.length; pop(s,`풀코스 +${50*c.orders.length}`); }
+      leave(s,'happy');
+    } else renderSeat(s);
+    hud();
+  }
+
+  function update(dt){
+    st.elapsed += dt;
+    st.level = 1 + Math.floor(st.elapsed / 30);
+    st.spawnT -= dt;
+    if(st.spawnT <= 0){
+      spawn();
+      st.spawnT = Math.max(1.4, 4.2 - (st.level-1)*0.4) + Math.random()*0.8;
+    }
+    for(const s of seats){
+      const c = s.c; if(!c) continue;
+      const n = NPCS[c.type];
+      if(n.pest){
+        c.stay += dt; c.magic -= dt;
+        if(c.magic <= 0){               // 방해 마법: 다른 손님 인내심 감소
+          c.magic = 2.5;
+          seats.forEach(o => { if(o.c && !NPCS[o.c.type].pest){ o.c.patience -= 1; } });
+          s.el.classList.remove('hex'); void s.el.offsetWidth; s.el.classList.add('hex');
+          beep(300,.15,'triangle');
+        }
+        const bar = s.el.querySelector('.bar i');
+        if(bar) bar.style.width = Math.max(0, 100 - c.stay/DRUID_STAY*100) + '%';
+        if(c.stay >= DRUID_STAY){
+          pop(s,'🧙 난장판! ❤️-1',true); sfx.angry(); leave(s,'angry'); loseLife();
+          if(!running) return;
+        }
+        continue;
+      }
+      c.patience -= dt;
+      const ratio = Math.max(0, c.patience / PATIENCE);
+      const bar = s.el.querySelector('.bar i');
+      if(bar){
+        bar.style.width = (ratio*100) + '%';
+        bar.style.background = ratio > .5 ? 'var(--green)' : ratio > .25 ? '#f0b429' : 'var(--red)';
+      }
+      const sec = s.el.querySelector('.sec');
+      if(sec) sec.textContent = Math.ceil(Math.max(0,c.patience)) + 's';
+      if(c.patience <= 0){
+        sfx.angry(); leave(s,'angry'); loseLife();
+        if(!running) return;
+      }
+    }
+    hud();
+  }
+
+  function loop(t){
+    if(!running) return;
+    if(!paused){
+      const dt = Math.min(0.1, (t - lastT)/1000);
+      update(dt);
+    }
+    lastT = t;
+    if(running) requestAnimationFrame(loop);
+  }
+
+  function gameOver(){
+    running = false;
+    if(st.score > best){ best = st.score; try{ localStorage.setItem('sebastian_best', best); }catch(e){} }
+    $('finalScore').textContent = st.score;
+    $('finalServed').textContent = st.served;
+    $('finalBest').textContent = best;
+    $('overMsg').textContent = st.score >= 3000 ? '"완벽한 집사의 일솜씨였습니다."'
+      : st.score >= 1000 ? '"나쁘지 않군요. 더 정진하십시오."' : '"집사로서 부끄러운 결과로군요…"';
+    $('overOv').classList.remove('hidden');
+  }
+
+  /* ===== 버튼 ===== */
+  $('bestStart').textContent = best;
+  $('startBtn').addEventListener('click', start);
+  $('retryBtn').addEventListener('click', start);
+  $('pauseBtn').addEventListener('click', () => { if(running){ paused = true; $('pauseOv').classList.remove('hidden'); } });
+  $('resumeBtn').addEventListener('click', () => { paused = false; lastT = performance.now(); $('pauseOv').classList.add('hidden'); });
+  $('quitBtn').addEventListener('click', () => {
+    running = false; paused = false; $('pauseOv').classList.add('hidden');
+    $('bestStart').textContent = best; $('startOv').classList.remove('hidden');
+  });
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden && running && !paused){ paused = true; $('pauseOv').classList.remove('hidden'); }
+  });
+  // 확대/더블탭 방지
+  document.addEventListener('dblclick', e => e.preventDefault());
+  document.addEventListener('gesturestart', e => e.preventDefault());
+
+  buildSeats(); buildMenu();
+})();
+</script>
+</body>
+</html>
