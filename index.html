@@ -147,21 +147,21 @@
     yakgwa:['🍯','약과'], dubai:['🌰','두쫀쿠'],
     soup:['🍲','스프'], mooncake:['🥮','월병'],
     steak:['🥩','스테이크'], beer:['🍺','맥주'],
-    earlchoco:['☕','백작초코'], snake:['🐍','스네이크'],
+    earlchoco:['☕','백작초코'],
     mouse:['🐭','생쥐'],
     greentea:['🍵','녹차'], wagashi:['🍡','화과자'],
     duck:['🦆','오리고기'], dumpling:['🥟','만두']
   };
   const NPCS = {
-    ciel:   {name:'시엘',   face:'👦', likes:['parfait','cookie','choco','cake','waffle','baum','macaron','chewy','yakgwa','dubai'], multi:true},
+    ciel:   {name:'시엘',   face:'👑', likes:['parfait','cookie','choco','cake','waffle','baum','macaron','chewy','yakgwa','dubai'], multi:true},
     meirin: {name:'메이린', face:'👓', likes:['soup','mooncake']},
     bardo:  {name:'바르도', face:'👨‍🍳', likes:['steak','beer']},
-    finian: {name:'피니안', face:'🧑‍🌾', likes:['earlchoco','snake']},
-    snake:  {name:'스네이크',face:'🧔', likes:['mouse','steak']},
+    finian: {name:'피니안', face:'🧑‍🌾', likes:['earlchoco','steak']},
+    snake:  {name:'스네이크',face:'🐍', likes:['mouse','steak']},
     tanaka: {name:'다나카', face:'👴', likes:['greentea','wagashi']},
-    lau:    {name:'라우',   face:'🕶️', likes:['duck','dumpling']},
-    ranmao: {name:'랑마오', face:'👧', likes:['duck','dumpling']},
-    druid:  {name:'드루이드',face:'🧙', likes:[], pest:true}
+    lau:    {name:'라우',   face:'⚔️', likes:['duck','dumpling']},
+    ranmao: {name:'랑마오', face:'🪭', likes:['duck','dumpling']},
+    druid:  {name:'드루이드',face:'☠️', likes:[], pest:true}
   };
   const REGULARS = ['meirin','bardo','finian','snake','tanaka','lau','ranmao'];
 
@@ -304,7 +304,7 @@
     else if(kind === 'happy'){ el.classList.add('happy'); }
     else if(kind === 'expelled'){
       el.className = 'seat occupied expelled';
-      el.innerHTML = '<div class="face">👦💨</div><div class="name">시엘</div><div class="orders">도련님, 그 이상은 안됩니다</div>';
+      el.innerHTML = '<div class="face">😓💨</div><div class="name">시엘</div><div class="orders">도련님, 그 이상은 안됩니다</div>';
       delay = 1400;
     }
     s.c = null;
@@ -355,7 +355,7 @@
     if(n.multi && c.orders.filter(o => o.done).length >= EXPEL_AT){
       // 시엘이 EXPEL_AT개 이상 먹으면 집사가 퇴장시킨다 (하트 감소 없음)
       st.served++; st.score += EXPEL_BONUS;
-      toast('🤵 "도련님, 그 이상은 안됩니다."');
+      toast('😓 "도련님, 그 이상은 안됩니다."');
       pop(s, `집사의 단호함 +${EXPEL_BONUS}`);
       sfx.win(); leave(s,'expelled');
     } else if(c.orders.every(o => o.done)){
@@ -388,7 +388,7 @@
         const bar = s.el.querySelector('.bar i');
         if(bar) bar.style.width = Math.max(0, 100 - c.stay/DRUID_STAY*100) + '%';
         if(c.stay >= DRUID_STAY){
-          pop(s,'🧙 난장판! ❤️-1',true); sfx.angry(); leave(s,'angry'); loseLife();
+          pop(s,'드루이드 출몰! ❤️-1',true); sfx.angry(); leave(s,'angry'); loseLife();
           if(!running) return;
         }
         continue;
@@ -426,8 +426,8 @@
     $('finalScore').textContent = st.score;
     $('finalServed').textContent = st.served;
     $('finalBest').textContent = best;
-    $('overMsg').textContent = st.score >= 3000 ? '"완벽한 집사의 일솜씨였습니다."'
-      : st.score >= 1000 ? '"나쁘지 않군요. 더 정진하십시오."' : '"집사로서 부끄러운 결과로군요…"';
+    $('overMsg').textContent = st.score >= 3000 ? '"🥰완벽한 집사의 일솜씨였습니다."'
+      : st.score >= 1000 ? '"🧐나쁘지 않군요. 더 정진하십시오."' : '"🫩집사로서 부끄러운 결과로군요…"';
     $('overOv').classList.remove('hidden');
   }
 
